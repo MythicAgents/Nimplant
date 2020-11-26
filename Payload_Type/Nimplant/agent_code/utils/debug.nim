@@ -1,4 +1,4 @@
-template debugMsg*(things: varargs[string, `$`]) =
+proc debugMsg*(things: varargs[string, `$`]) =
     when defined(debug):
         for thing in things:
             echo thing

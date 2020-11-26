@@ -9,6 +9,7 @@ when defined(AESPSK):
     import sysrandom
     import base64
     from sequtils import concat, repeat
+    from strutils import rfind
 
     # Conversion taken from
     # https://github.com/nim-lang/Nim/issues/14810
@@ -71,7 +72,7 @@ when defined(AESPSK):
         var hmacres {.noinit.} = newSeq[byte](32)
         discard finish(hctx1, addr(hmacres[0]), 32)
         # result = encode(concat(toByteSeq(uuid), encrypted, hmacres), false)
-        result = encode(concat(toByteSeq(uuid), encrypted, hmacres), true)
+        result = encode(concat(toByteSeq(uuid), encrypted, hmacres), false)
         ctx.clear()
         hctx1.clear()
 
@@ -102,7 +103,12 @@ when defined(AESPSK):
             ctx.decrypt(ecrypt, dcrypt)
             # unpad decrypted result
             var realstring = unpad_buffer(dcrypt, 16)
-            result = uuid & toString(dcrypt)
+            let temp_result = uuid & toString(dcrypt)
+            let lastbrace = rfind(temp_result, "}")
+            # For some reason when decrypting invalid characters may be appended to the end of json 
+            # Need to trim it off 
+            result = temp_result[0 .. lastbrace]
+
             ctx.clear()
         else:
             when not defined(release):
