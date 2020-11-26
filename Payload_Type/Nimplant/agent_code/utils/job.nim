@@ -28,8 +28,7 @@ import ../commands/shell
 import ../commands/upload
 import ../commands/unsetenv
 
-from debug import debugMsg
-
+import debug
 
 proc checkDate*(kdate: string) : bool =
    if cmp("yyyy-mm-dd", kdate) == 0:

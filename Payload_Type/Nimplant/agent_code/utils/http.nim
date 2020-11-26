@@ -11,7 +11,7 @@ when defined(AESPSK):
     from crypto import encryptStr,decryptStr
     from uri import decodeUrl
 
-from debug import debugMsg
+import debug
 
 # TODO sort config
 proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.async.} = 
