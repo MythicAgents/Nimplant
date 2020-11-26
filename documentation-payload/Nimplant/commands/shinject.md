@@ -32,7 +32,7 @@ shinject
 In pop up menu
 ```
 pid: 1234
-File: apollo.bin
+File: nimplant.bin
 ```
 
 ## Detailed Usage

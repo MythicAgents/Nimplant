@@ -30,7 +30,6 @@ proc getTasks* : Future[seq[Task]] {.async.} =
         debugMsg("Payload UUID do not match when fetching tasks something is wrong...")
         return tasks
     # https://nim-lang.org/docs/system.html#%5E.t%2Cint
-    echo "length of temp: ", len(temp)
     var resp = parseJson(temp[36 .. ^1])
     for jnode in getElems(resp["tasks"]):
         debugMsg("Jnode: ", jnode)

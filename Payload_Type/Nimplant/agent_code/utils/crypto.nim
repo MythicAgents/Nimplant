@@ -103,11 +103,8 @@ when defined(AESPSK):
             ctx.decrypt(ecrypt, dcrypt)
             # unpad decrypted result
             var realstring = unpad_buffer(dcrypt, 16)
-            # let temp_result = uuid & toString(dcrypt)
-            # let lastbrace = rfind(temp_result, "}")
-            # For some reason when decrypting invalid characters may be appended to the end of json 
+            # When decrypting invalid characters may be appended to the end of json 
             # Need to trim it off 
-            #result = temp_result[0 .. lastbrace]
             result = if realstring[^1] == '}': realstring else: realstring[0 .. rfind(realstring, "}")]
             ctx.clear()
         else:
