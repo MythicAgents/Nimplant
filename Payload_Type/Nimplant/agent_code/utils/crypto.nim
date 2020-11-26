@@ -70,7 +70,8 @@ when defined(AESPSK):
         hctx1.update(toString(encrypted))
         var hmacres {.noinit.} = newSeq[byte](32)
         discard finish(hctx1, addr(hmacres[0]), 32)
-        result = encode(concat(toByteSeq(uuid), encrypted, hmacres), false)
+        # result = encode(concat(toByteSeq(uuid), encrypted, hmacres), false)
+        result = encode(concat(toByteSeq(uuid), encrypted, hmacres), true)
         ctx.clear()
         hctx1.clear()
 

