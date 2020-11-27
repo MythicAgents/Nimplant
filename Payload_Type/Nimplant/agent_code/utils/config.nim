@@ -37,7 +37,7 @@ proc createConfig*() : Config =
     PayloadUUID: "%UUID%",
     UserAgent: "USER_AGENT",
     HostHeader: "domain_front",
-    Param: "%PARAM%",
+    Param: "query_path_name",
     ChunkSize: parseInt("%CHUNK_SIZE%"),
     DefaultProxy: parseBool("%DEFAULT_PROXY%"),
     ProxyAddress: "proxy_host:proxy_port",

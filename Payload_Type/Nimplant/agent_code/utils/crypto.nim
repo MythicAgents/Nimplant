@@ -9,7 +9,7 @@ when defined(AESPSK):
     import sysrandom
     import base64
     from sequtils import concat, repeat
-    from strutils import rfind
+    from strutils import find, rfind
 
     # Conversion taken from
     # https://github.com/nim-lang/Nim/issues/14810
@@ -105,7 +105,8 @@ when defined(AESPSK):
             var realstring = toString(unpad_buffer(dcrypt, 16))
             # When decrypting invalid characters may be appended to the end of json 
             # Need to trim it off 
-            result = if realstring[^1] == '}': realstring else: realstring[0 .. rfind(realstring, "}")]
+            let temp = if realstring[^1] == '}': realstring else: realstring[0 .. rfind(realstring, "}")]
+            result = if temp[0] == '{': temp else: temp[find(temp, "{")..^1]
             ctx.clear()
         else:
             when not defined(release):
