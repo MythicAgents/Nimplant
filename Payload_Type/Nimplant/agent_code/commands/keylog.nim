@@ -381,15 +381,14 @@ proc execute*(): Future[Table[string, string]] {.async.} =
                     discard
             finally:
                 UnhookWindowsHookEx(hook)
-        # result = await shipoff(windowsToKey)
         result = windowsToKey
 
 
 
-proc main() {.async.} =
+#proc main() {.async.} =
     
     # echo $buffer
-    var myTable = initTable[string, string]()
+    #var myTable = initTable[string, string]()
     # var mySeq: seq[string]
     # var mainTuple = (counter: 0, chrToWindow: myTable)
     # echo "Calling execute"
@@ -399,4 +398,4 @@ proc main() {.async.} =
     # echo "x: ", $(^x)
 
 
-waitFor main()
+#waitFor main()
