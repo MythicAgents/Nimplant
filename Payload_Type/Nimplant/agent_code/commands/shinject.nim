@@ -1,7 +1,9 @@
 import winim/lean
-import asyncdispatch
+# import asyncdispatch
 
-proc execute*(sc: openarray[char], pid: int): Future[bool] {.async.}  =    
+# proc execute*(sc: openarray[char], pid: int): Future[bool] {.async.}  =
+# TODO determine if possible to make proc async  
+proc execute*(sc: openarray[char], pid: int): bool =  
     # TODO add Linux support        
     when defined(windows):
         let hProcess = OpenProcess(0x001F0FFF, false, cast[DWORD](pid))
