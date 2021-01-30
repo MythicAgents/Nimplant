@@ -60,7 +60,7 @@ proc getPID: int =
     result = getCurrentProcessId()
 
 proc getIP(host: string): string = 
-    result = $(nativesockets.getHostByName(host).addrList)
+    result = $(nativesockets.getHostByName(host).addrList[0])
 
 proc getHostName*(): string = 
     result = nativesockets.getHostname()
