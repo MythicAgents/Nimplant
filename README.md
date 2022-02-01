@@ -1,3 +1,6 @@
+# Deprecated
+This agent is deprecated as it's only compatible with Mythic 2.1 and the main developer is not able to continue working on it. If somebody wants to make the updates (in the python side of things, not nim code) to the latest Mythic, we can mark it as not deprecated anymore.
+
 
 ![Nimplant](agent_icons/nimplant.svg)
 
