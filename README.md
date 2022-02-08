@@ -1,6 +1,5 @@
-# Deprecated
-This agent is deprecated as it's only compatible with Mythic 2.1 and the main developer is not able to continue working on it. If somebody wants to make the updates (in the python side of things, not nim code) to the latest Mythic, we can mark it as not deprecated anymore.
-
+## Slow update - Partially Deprecated
+This agent is slowly being updated to Mythic 2.3 and might or might not have periodic updates over time. However, there is currently no identified maintainer for the project. The Mythic side of things has been updated for Mythic 2.3.7, but there are issues currently in the Nim side of things.
 
 ![Nimplant](agent_icons/nimplant.svg)
 
@@ -12,9 +11,7 @@ To install Nimplant, you'll need Mythic installed on a remote computer. You can 
 
 From the Mythic install root, run the command:
 
-`./install_agent_from_github.sh https://github.com/MythicAgents/Nimplant`
-
-Once installed, restart Mythic to build a new agent.
+`sudo ./mythic-cli install github https://github.com/MythicAgents/Nimplant v2.3`
 
 
 ### Highlighted Agent Features

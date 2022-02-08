@@ -1,14 +1,14 @@
-from CommandBase import *
+from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
 
 class LsArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "path": CommandParameter(name="path", type=ParameterType.String, default_value="."),
-            "recurse": CommandParameter(name="recurse", type=ParameterType.String, default_value="false")
-        }
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(name="path", type=ParameterType.String, default_value="."),
+            CommandParameter(name="recurse", type=ParameterType.String, default_value="false")
+        ]
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
@@ -24,12 +24,7 @@ class LsCommand(CommandBase):
     help_cmd = "ls [directory] [recurse?]"
     description = "List files in directory with option to recursively list files"
     version = 1
-    is_exit = False
-    is_file_browse = True
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
+    supported_ui_features = ["file_browser:list"]
     author = "@NotoriousRebel"
     argument_class = LsArguments
     attackmapping = ["T1083"]

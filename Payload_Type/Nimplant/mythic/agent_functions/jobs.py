@@ -1,10 +1,10 @@
-from CommandBase import *
+from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
 
 class JobsArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
         self.args = {}
 
     async def parse_arguments(self):
@@ -16,13 +16,7 @@ class JobsCommand(CommandBase):
     needs_admin = False
     help_cmd = "jobs"
     description = "List current jobs."
-    version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
+    version = 2
     author = "@NotoriousRebel"
     argument_class = JobsArguments
     attackmapping = []

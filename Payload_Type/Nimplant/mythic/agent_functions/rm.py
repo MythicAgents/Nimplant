@@ -1,11 +1,11 @@
-from CommandBase import *
+from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
 
 class RmArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {}
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = []
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
@@ -19,13 +19,8 @@ class RmCommand(CommandBase):
     needs_admin = False
     help_cmd = "rm [path]"
     description = "Delete a file."
-    version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = True
-    is_upload_file = False
+    version = 2
+    supported_ui_features = ["file_browser:remove"]
     author = "@NotoriousRebel"
     argument_class = RmArguments
     attackmapping = []

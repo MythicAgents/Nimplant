@@ -1,17 +1,17 @@
-from CommandBase import *
+from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
 
 class DownloadArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "file_path": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="file_path",
                 type=ParameterType.String,
                 description="Path to remote file to be downloaded",
             )
-        }
+        ]
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
@@ -27,14 +27,9 @@ class DownloadCommand(CommandBase):
     cmd = "download"
     needs_admin = False
     help_cmd = "download [path to remote file]"
-    description = "Download a file from the victim machine to the apfell server in chunks (no need for quotes in the path). It will be saved to app/files/{operation name}/downloads/{hostname}/{filename}"
-    version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = True
-    is_remove_file = False
-    is_upload_file = False
+    description = "Download a file from the victim machine to the Mythic server in chunks (no need for quotes in the path)"
+    version = 2
+    supported_ui_features = ["file_browser:download"]
     author = "@NotoriousRebel"
     argument_class = DownloadArguments
     attackmapping = []
