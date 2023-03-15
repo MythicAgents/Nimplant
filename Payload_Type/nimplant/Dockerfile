@@ -1,17 +1,12 @@
-from mmmmcoffee/nimplant:0.0.6
-#ENV PATH="${PATH}:/root/.nimble/bin:$PATH"
-#ENTRYPOINT ["/Mythic/mythic/payload_service.sh"]
-#from itsafeaturemythic/python38_payload:0.1.2
-#run apt update && apt install -y mingw-w64
-#ENTRYPOINT ["/bin/bash"]
-#docker run -it nimplantbuild
-#RUN curl https://nim-lang.org/choosenim/init.sh -sSf | sh 
-#RUN nimble install -y winim 
-#RUN nimble install -y nimcrypto
-#ENV PATH="${PATH}:/root/.nimble/bin:$PATH"
-#ENTRYPOINT ["/Mythic/mythic/payload_service.sh"]
+FROM mmmmcoffee/nimplantv3:0.0.1
+ENV PATH="${PATH}:/root/.nimble/bin:$PATH"
+RUN python3 -m pip install mythic-container==0.2.0rc4
+WORKDIR /Mythic/
+CMD ["python3", "main.py"]
 
-#from mmmmcoffee/nimplant:0.0.3
+#apt update && apt install -y mingw-w64
+#curl https://nim-lang.org/choosenim/init.sh -sSf | sh 
 #ENV PATH="${PATH}:/root/.nimble/bin:$PATH"
-#RUN nimble install -y nimcrypto
-#run apt update && apt install -y mingw-w64
+
+#nimble install -y winim 
+#nimble install -y nimcrypto
