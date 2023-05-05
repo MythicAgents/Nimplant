@@ -2,7 +2,7 @@ import asyncdispatch
 import base64
 import config
 import json
-import http
+#import http
 import strformat
 import strutils
 import times

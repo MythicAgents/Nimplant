@@ -1,4 +1,4 @@
-FROM mmmmcoffee/nimplantv3:0.0.1
+FROM mmmmcoffee/nimplantv3:0.0.2
 ENV PATH="${PATH}:/root/.nimble/bin:$PATH"
 RUN python3 -m pip install mythic-container==0.2.0rc4
 WORKDIR /Mythic/
@@ -10,3 +10,4 @@ CMD ["python3", "main.py"]
 
 #nimble install -y winim 
 #nimble install -y nimcrypto
+#nimble install -y puppy
