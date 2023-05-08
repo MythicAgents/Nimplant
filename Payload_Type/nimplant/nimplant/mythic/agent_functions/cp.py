@@ -75,7 +75,7 @@ class CpCommand(CommandBase):
     needs_admin = False
     help_cmd = "cp [source] [dest]"
     description = "Copy a file from one location to another."
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = CpArguments
     attackmapping = ["T1570"]

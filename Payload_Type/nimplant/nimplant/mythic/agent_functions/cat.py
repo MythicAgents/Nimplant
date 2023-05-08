@@ -32,7 +32,7 @@ class CatCommand(CommandBase):
     needs_admin = False
     help_cmd = "cat [file]"
     description = "Print the contents of a file specified by [file]"
-    version = 2
+    version = 3
     supported_ui_features = ["cat"]
     author = "@NotoriousRebel"
     argument_class = CatArguments

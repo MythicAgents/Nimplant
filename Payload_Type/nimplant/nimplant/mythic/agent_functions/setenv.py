@@ -43,7 +43,7 @@ class SetEnvCommand(CommandBase):
     needs_admin = False
     help_cmd = "setenv [param] [value]"
     description = "Sets an environment variable to your choosing."
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = SetEnvArguments
     attackmapping = []

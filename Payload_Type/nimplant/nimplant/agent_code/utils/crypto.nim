@@ -55,7 +55,7 @@ when defined(AESPSK):
         discard randomBytes(addr buffer[0], length)
         result = buffer
 
-    proc encryptStr*(uuid: string, key: string, input: string): string = 
+    proc encryptStr*(uuid: string, key: string, input: string,base64UrlEncode: bool = false): string = 
         # So many hours in agony debugging this...
         # Make sure to use raw bytes of sha256 hash result not the string...
         var ctx: CBC[aes256]
@@ -75,7 +75,7 @@ when defined(AESPSK):
         hctx1.update(toString(encrypted))
         var hmacres {.noinit.} = newSeq[byte](32)
         discard finish(hctx1, addr(hmacres[0]), 32)
-        result = encode(concat(toByteSeq(uuid), encrypted, hmacres), false)
+        result = encode(concat(toByteSeq(uuid), encrypted, hmacres), base64UrlEncode)
         ctx.clear()
         hctx1.clear()
 

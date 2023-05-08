@@ -18,7 +18,7 @@ class ExitCommand(CommandBase):
     needs_admin = False
     help_cmd = "exit"
     description = "Task the implant to exit."
-    version = 2
+    version = 3
     supported_ui_features = ["callback_table:exit"]
     author = "@NotoriousRebel"
     argument_class = ExitArguments

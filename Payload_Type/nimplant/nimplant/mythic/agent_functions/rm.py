@@ -55,12 +55,13 @@ class RmArguments(TaskArguments):
 
 
 
+
 class RmCommand(CommandBase):
     cmd = "rm"
     needs_admin = False
     help_cmd = "rm [path]"
     description = "Delete a file specified by [path]"
-    version = 2
+    version = 3
     supported_ui_features = ["file_browser:remove"]
     author = "@NotoriousRebel"
     argument_class = RmArguments

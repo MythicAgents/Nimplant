@@ -32,7 +32,7 @@ class CdCommand(CommandBase):
     needs_admin = False
     help_cmd = "cd [path]"
     description = "Change directory to [path]. Path relative identifiers such as ../ are accepted but no ~"
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = CdArguments
     attackmapping = ["T1083"]

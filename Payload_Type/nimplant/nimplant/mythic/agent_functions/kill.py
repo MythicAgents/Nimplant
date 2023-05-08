@@ -33,7 +33,7 @@ class KillCommand(CommandBase):
     needs_admin = False
     help_cmd = "kill [pid]"
     description = "Kill a process specified by [pid]"
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = KillArguments
     attackmapping = ["T1106"]

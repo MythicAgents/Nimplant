@@ -71,7 +71,7 @@ class MvCommand(CommandBase):
     needs_admin = False
     help_cmd = "mv [source] [dest]"
     description = "Move a file from source to destination."
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = MvArguments
     attackmapping = ["T1570"]

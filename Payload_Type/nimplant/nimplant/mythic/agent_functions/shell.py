@@ -22,7 +22,7 @@ class ShellCommand(CommandBase):
     needs_admin = False
     help_cmd = "shell [command]  [arguments]"
     description = "Execute a shell command with 'sh -c' if on Linux or 'cmd.exe /r' if on Windows"
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = ShellArguments
     
