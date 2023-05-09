@@ -18,7 +18,7 @@ class GetEnvCommand(CommandBase):
     needs_admin = False
     help_cmd = "getenv"
     description = "Get all of the current environment variables."
-    version = 1
+    version = 3
     author = "@NotoriousRebel"
     argument_class = GetEnvArguments
     attackmapping = []

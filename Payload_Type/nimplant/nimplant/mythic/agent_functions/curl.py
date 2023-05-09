@@ -68,7 +68,7 @@ class CurlCommand(CommandBase):
     needs_admin = False
     help_cmd = 'curl {  "url": "https://www.google.com",  "method": "GET",  "headers": "",  "body": "" }'
     description = "Execute a single web request."
-    version = 1
+    version = 3
     is_exit = False
     is_file_browse = False
     is_process_list = False

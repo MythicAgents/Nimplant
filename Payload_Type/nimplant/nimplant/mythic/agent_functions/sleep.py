@@ -53,7 +53,7 @@ class SleepCommand(CommandBase):
     needs_admin = False
     help_cmd = "sleep {interval} [jitter%]"
     description = "Update the sleep interval for the agent."
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = SleepArguments
     attackmapping = ["T1029"]

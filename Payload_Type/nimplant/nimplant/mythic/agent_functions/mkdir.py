@@ -36,7 +36,7 @@ class MkdirCommand(CommandBase):
     needs_admin = False
     help_cmd = "mkdir [path]"
     description = "Make a directory specified by [path]"
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = MkdirArguments
     attackmapping = ["T1106"]

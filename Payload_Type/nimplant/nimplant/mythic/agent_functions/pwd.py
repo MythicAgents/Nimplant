@@ -19,7 +19,7 @@ class PwdCommand(CommandBase):
     needs_admin = False
     help_cmd = "pwd"
     description = "Print working directory."
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = PwdArguments
     attackmapping = ["T1083"]

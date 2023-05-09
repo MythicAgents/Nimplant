@@ -10,7 +10,7 @@ import zipfile
 class NimPlant(PayloadType):
     name = "nimplant"  # name that would show up in the UI
     file_extension = "zip"  # default file extension to use when creating payloads
-    author = "@NotoriousRebel"  # author of the payload type (2.3 update by mmmmcoffee)
+    author = "@NotoriousRebel"  # author of the payload type (2.3 and beyond update by mmmmcoffee)
     supported_os = [  # supported OS and architecture combos
         SupportedOS.Windows, SupportedOS.Linux
     ]
@@ -68,7 +68,7 @@ class NimPlant(PayloadType):
                 profile = c2.get_c2profile()['name']
                 resp.build_message += "dict items"
                 for key, val in c2.get_parameters_dict().items():
-                    resp.build_message += "key: " + str(key) + "   value: " + str(val)
+                    resp.build_message += "key: " + str(key) + "   value: " + str(val) + "\n"
                     
                     if key == 'AESPSK':
                          # AESPSK is defined so update val as
@@ -80,21 +80,6 @@ class NimPlant(PayloadType):
                         file1 = file1.replace(key, val)                        
 
                     
-                    # if key == 'AESPSK':
-                    #     # AESPSK is defined so update val as
-                    #     # AESPSK is a compile time defined value
-                    #     tmp = f'"{val}"'
-                    #     resp.build_message += "val is :" + str(val)
-                    #     resp.build_message += "tmp is :" + str(tmp)
-                    #     aespsk_val +=val["enc_key"]#json.loads(str(tmp.replace)("'",'"'))["enc_key"]
-                    #     continue
-                    # if isinstance(val, dict):
-                    #     file1 = file1.replace(key, val["enc_key"] if val["enc_key"] is not None else "")
-                    # elif not isinstance(val, str):
-                    #     file1 = file1.replace(key, json.dumps(val))
-                    # else:
-                    #     file1 = file1.replace(key, val)
-                    
             with open("{}/utils/config.nim".format(agent_build_path.name), 'w') as f:
                 f.write(file1)
 
@@ -105,7 +90,9 @@ class NimPlant(PayloadType):
 
             resp.build_message += "AESPSK IS: " + aespsk_val  if len(aespsk_val) > 2 else "not found"
             # TODO research --passL:-W --passL:-ldl
-            command = f"nim {'c' if self.get_parameter('lang') == 'C' else 'cpp'} {'--os:linux --passL:-W --passL:-ldl' if self.get_parameter('os') == 'linux' else ''} -f --d:mingw {'--d:debug --hints:on --nimcache:' + agent_build_path.name if self.get_parameter('build') == 'debug' else '--d:release --hints:off'} {'--d:AESPSK=' + aespsk_val  if len(aespsk_val) > 2 else ''} --d:ssl --opt:size --passC:-flto --passL:-flto --passL:-s {'--app:lib' if self.get_parameter('format') == 'dll' else ''} {'--embedsrc:on' if self.get_parameter('build') == 'debug' else ''} --cpu:{'amd64' if self.get_parameter('arch') == 'x64' else 'i386'} --out:{self.name}{out_ext} c2/base.nim"
+            
+            
+            command = f"nim {'c' if self.get_parameter('lang') == 'C' else 'cpp'} {'--os:linux --passL:-W --passL:-ldl' if self.get_parameter('os') == 'linux' else ''} -f --d:mingw {'--d:debug --hints:on --nimcache:' + agent_build_path.name if self.get_parameter('build') == 'debug' else '--d:release --hints:off'} {'--d:AESPSK=' + aespsk_val  if len(aespsk_val) > 2 else ''} --opt:size --passC:-flto --passL:-flto --passL:-s {'--app:lib' if self.get_parameter('format') == 'dll' else ''} {'--embedsrc:on' if self.get_parameter('build') == 'debug' else ''} --cpu:{'amd64' if self.get_parameter('arch') == 'x64' else 'i386'} --out:{self.name}{out_ext} c2/base.nim"
                                                                                                                                                                                                                                                                                                                             
             #command = f"nim {'c' if self.get_parameter('lang') == 'C' else 'cpp'} {'--os:linux --passL:-W --passL:-ldl' if self.get_parameter('os') == 'linux' else ''} -f --d:mingw {'--d:debug --hints:on --nimcache:' + agent_build_path.name if self.get_parameter('build') == 'debug' else '--d:release --hints:off'} {'--d:AESPSK=' + aespsk_val  if len(aespsk_val) > 2 else ''} --d:ssl {'--dynlibOverride:ssl --passl:-lcrypto --passl:-lssl' if self.get_parameter('os') == 'windows' else ''} --opt:size --passC:-flto --passL:-flto --passL:-s {'--app:lib' if self.get_parameter('format') == 'dll' else ''} {'--embedsrc:on' if self.get_parameter('build') == 'debug' else ''} --cpu:{'amd64' if self.get_parameter('arch') == 'x64' else 'i386'} --out:{self.name}{out_ext} c2/base.nim"
             resp.build_message += f'command: {command} attempting to compile...'

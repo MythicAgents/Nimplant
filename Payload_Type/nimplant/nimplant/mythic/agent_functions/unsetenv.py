@@ -29,7 +29,7 @@ class UnsetEnvCommand(CommandBase):
     needs_admin = False
     help_cmd = "unsetenv [param]"
     description = "Unset an environment variable"
-    version = 2
+    version = 3
     author = "@NotoriousRebel"
     argument_class = UnsetEnvArguments
     attackmapping = []
