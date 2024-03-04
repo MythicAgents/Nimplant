@@ -1,6 +1,6 @@
 FROM mmmmcoffee/nimplantv3:0.0.2
 ENV PATH="${PATH}:/root/.nimble/bin:$PATH"
-RUN python3 -m pip install mythic-container==0.2.0rc4
+RUN python3 -m pip install mythic-container==0.4.4 
 WORKDIR /Mythic/
 CMD ["python3", "main.py"]
 
